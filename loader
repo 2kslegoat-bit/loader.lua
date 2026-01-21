@@ -2851,7 +2851,7 @@ CreateThread(function()
             Menu.LoadingProgress = 100.0
             Menu.IsLoading = false
             Menu.LoadingComplete = true
-            Menu.SelectingKey = true
+            -- Menu.SelectingKey = true -- Removed to prevent double prompt
             break
         end
 
@@ -16401,7 +16401,24 @@ end
 CreateThread(function()
     Wait(2000) -- Wait for Menu lib to initialize
 
+    -- Check if we already have a stored key from a previous load
+    if _G.StoredMenuKey then
+        Menu.SelectedKey = _G.StoredMenuKey
+        Menu.SelectedKeyName = _G.StoredMenuKeyName or "Unknown"
+        if type(Susano) == "table" and type(Susano.ShowNotification) == "function" then
+            Susano.ShowNotification("~g~Menu Key Restored: " .. tostring(Menu.SelectedKeyName))
+        end
+        return
+    end
+
+    -- Check if we are already asking (prevent double prompt)
+    if _G.AskingForKeybind then
+        return
+    end
+
     if Menu and Menu.OpenInput then
+        _G.AskingForKeybind = true
+        
         -- Mapping des noms de touches vers les codes VK (Virtual Key) pour Susano
         -- F1=112 (0x70), ...
         local keyNameToVK = {
@@ -16433,6 +16450,8 @@ CreateThread(function()
                     -- On met simplement à jour la configuration du Menu
                     Menu.SelectedKey = vk
                     Menu.SelectedKeyName = keyName
+                    _G.StoredMenuKey = vk
+                    _G.StoredMenuKeyName = keyName
                     
                     if type(Susano) == "table" and type(Susano.ShowNotification) == "function" then
                         Susano.ShowNotification("~g~Touche définie sur " .. keyName)
@@ -16445,6 +16464,8 @@ CreateThread(function()
                          local byteCode = string.byte(keyName)
                          Menu.SelectedKey = byteCode
                          Menu.SelectedKeyName = keyName
+                         _G.StoredMenuKey = byteCode
+                         _G.StoredMenuKeyName = keyName
                          if type(Susano) == "table" and type(Susano.ShowNotification) == "function" then
                              Susano.ShowNotification("~g~Touche définie sur " .. keyName)
                          end
@@ -16455,6 +16476,7 @@ CreateThread(function()
                     end
                 end
             end
+            _G.AskingForKeybind = false
         end)
     end
 end)
