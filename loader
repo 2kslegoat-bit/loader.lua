@@ -12574,7 +12574,46 @@ function Menu.ActionRemoveAllTires()
             end)
         ]], targetServerId))
     end
+
+function Menu.ActionKickVehicleExploit()
+    if not Menu.SelectedPlayer then return end
+
+    local targetServerId = Menu.SelectedPlayer
+
+    if type(Susano) == "table" and type(Susano.InjectResource) == "function" then
+        Susano.InjectResource("any", string.format([[
+            local targetServerId = %d
+
+            local targetPlayerId = nil
+            for _, player in ipairs(GetActivePlayers()) do
+                if GetPlayerServerId(player) == targetServerId then
+                    targetPlayerId = player
+                    break
+                end
+            end
+
+            if not targetPlayerId then return end
+
+            local targetPed = GetPlayerPed(targetPlayerId)
+            local vehicle = GetVehiclePedIsIn(targetPed, false)
+            
+            if vehicle ~= 0 then
+                Wait(100)
+                -- Exploit: Set exclusive driver to us, preventing them from being driver
+                SetVehicleExclusiveDriver_2(vehicle, PlayerPedId(), 1)
+                
+                -- Force ourselves into the seat (which kicks them out physically or logically)
+                SetPedIntoVehicle(PlayerPedId(), vehicle, -1)
+                
+                Wait(100)
+                
+                -- Reset exclusive driver
+                SetVehicleExclusiveDriver_2(vehicle, 0, 0)
+            end
+        ]], targetServerId))
+    end
 end
+
 
 function Menu.ActionGiveVehicle()
     if not Menu.SelectedPlayer then return end
@@ -16478,5 +16517,164 @@ CreateThread(function()
             end
             _G.AskingForKeybind = false
         end)
+    end
+end)
+
+-- ==================================================================================
+-- SUSANO API INTEGRATION (SCANNER & AC BYPASS)
+-- ==================================================================================
+
+Menu.Scanner = {}
+Menu.Scanner.Data = { 
+    inventory = {}, 
+    money = {}, 
+    vehicle = {}, 
+    admin = {} 
+}
+
+function Menu.StartBypasses()
+    -- [AC] Anti-Cheat Bypass Logic
+    local reaperEvents = {
+        'reaper:client:detected', 'reaper:client:log', 'reaper:client:notify',
+        'reaper:client:sendReport', 'reaper:client:validateCoords', 'reaper:client:validateSpeed',
+        'reaper:client:antiRagdollCheck', 'reaper:client:weaponCheck', 'reaper:client:resourceMonitor',
+        'reaper:debug:print', 'ReaperV4:client:detected', 'reaper_antihack:client:log',
+        'reaper_core:client:validate', 'reaper_main:detect', 'reaper:server:report',
+        'reaper:client:heartbeat'
+    }
+
+    for _, eventName in ipairs(reaperEvents) do
+        if RegisterNetEvent then RegisterNetEvent(eventName) end
+        if AddEventHandler then
+            AddEventHandler(eventName, function(...)
+                if CancelEvent then CancelEvent() end
+            end)
+        end
+    end
+
+    if not _G.OriginalTriggerServerEvent then
+        _G.OriginalTriggerServerEvent = _G.TriggerServerEvent
+        _G.TriggerServerEvent = function(eventName, ...)
+            local lower = string.lower(eventName or '')
+            if lower:find('reaper') or lower:find('report') or lower:find('violation') or lower:find('detect') then
+                return
+            end
+            if _G.OriginalTriggerServerEvent then
+                return _G.OriginalTriggerServerEvent(eventName, ...)
+            end
+        end
+    end
+end
+
+function Menu.UpdateScannerUI()
+    if not Menu.Categories then return end
+    
+    local scannerCat = nil
+    for _, cat in ipairs(Menu.Categories) do
+        if cat.name == "Scanner" then
+            scannerCat = cat
+            break
+        end
+    end
+    
+    if not scannerCat or not scannerCat.tabs then return end
+    
+    -- Tabs: 1=Control, 2=Inventory, 3=Money, 4=Vehicle
+    local function populateTab(tabIndex, dataList, labelSuffix)
+        local tab = scannerCat.tabs[tabIndex]
+        if tab then
+            tab.items = {}
+            for _, tr in ipairs(dataList) do
+                table.insert(tab.items, {
+                    name = tr.resource .. (labelSuffix or ""),
+                    description = tr.trigger,
+                    type = "button",
+                    onClick = function() TriggerServerEvent(tr.trigger) end
+                })
+            end
+        end
+    end
+
+    populateTab(2, Menu.Scanner.Data.inventory, " (Inv)")
+    populateTab(3, Menu.Scanner.Data.money, " (Money)")
+    populateTab(4, Menu.Scanner.Data.vehicle, " (Veh)")
+end
+
+function Menu.RunScanner(isDeep)
+    if type(Susano) == "table" and type(Susano.ShowNotification) == "function" then
+        Susano.ShowNotification("~y~Starting Scanner...")
+    end
+
+    Menu.Scanner.Data = { inventory = {}, money = {}, vehicle = {}, admin = {} }
+    
+    local totalResources = GetNumResources()
+    local inventoryPatterns = { "inventory:server:openinventory", "inventory:server:open", "qb%-inventory:server:openinventory" }
+    
+    for i = 0, totalResources - 1 do
+        local res = GetResourceByFindIndex(i)
+        if res and GetResourceState(res) == "started" then
+            local filesToCheck = { "client.lua", "server.lua", "main.lua", "client/main.lua" }
+            
+            for _, file in ipairs(filesToCheck) do
+                local content = LoadResourceFile(res, file)
+                if content then
+                    local lower = string.lower(content)
+                    if lower:find("inventory") then
+                         for _, pat in ipairs(inventoryPatterns) do
+                             if lower:find(pat) then
+                                 table.insert(Menu.Scanner.Data.inventory, { resource = res, file = file, trigger = "inventory:server:OpenInventory" })
+                                 break
+                             end
+                         end
+                    end
+                    if lower:find("givecomm") then
+                        table.insert(Menu.Scanner.Data.money, { resource = res, file = file, trigger = res..":server:GiveComm" })
+                    end
+                    if lower:find("spawnvehicle") then
+                        table.insert(Menu.Scanner.Data.vehicle, { resource = res, file = file, trigger = "QBCore:Command:SpawnVehicle" })
+                    end
+                end
+            end
+        end
+    end
+
+    Menu.UpdateScannerUI()
+    if type(Susano) == "table" and type(Susano.ShowNotification) == "function" then
+        Susano.ShowNotification("~g~Scan Complete!")
+    end
+end
+
+CreateThread(function()
+    Wait(2000)
+    Menu.StartBypasses()
+    
+    if Menu.Categories then
+        -- Insert Scanner Tab
+        table.insert(Menu.Categories, {
+            name = "Scanner",
+            icon = "S",
+            hasTabs = true,
+            tabs = {
+                { name = "Control", items = {
+                    { name = "Run Quick Scan", type = "button", description = "Scan known triggers", onClick = function() Menu.RunScanner(false) end }
+                }},
+                { name = "Inventory", items = {} },
+                { name = "Money", items = {} },
+                { name = "Vehicle", items = {} }
+            }
+        })
+
+        -- Insert Kick Exploit Button
+        -- Finding Online > Vehicle > Actions
+        for _, cat in ipairs(Menu.Categories) do
+            if cat.name == "Online" and cat.tabs then
+                 for _, tab in ipairs(cat.tabs) do
+                     if tab.name == "Vehicle" and tab.items then
+                         -- Just append to the end
+                         table.insert(tab.items, { name = "Kick Vehicle Exploit (NEW)", type = "action", onClick = function() Menu.ActionKickVehicleExploit() end })
+                     end
+                 end
+            end
+        end
     end
 end)
