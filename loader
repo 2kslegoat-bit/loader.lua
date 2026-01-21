@@ -567,7 +567,7 @@ function Menu.DrawItem(x, itemY, width, itemHeight, item, isSelected)
         local selectorX = x
         
         if Menu.GradientType == 2 then
-            local gradientSteps = 120
+            local gradientSteps = 30 -- Optimized from 120
             local drawWidth = width - 1
             local stepWidth = drawWidth / gradientSteps
             local selectorY = drawY
@@ -612,7 +612,7 @@ function Menu.DrawItem(x, itemY, width, itemHeight, item, isSelected)
                 end
             end
         else
-            local gradientSteps = 50
+            local gradientSteps = 25 -- Optimized from 50
             local stepHeight = itemHeight / gradientSteps
             local selectorWidth = width - 1
     
@@ -1073,7 +1073,7 @@ function Menu.DrawCategories()
     local baseG = (Menu.Colors.HeaderPink and Menu.Colors.HeaderPink.g) and (Menu.Colors.HeaderPink.g / 255.0) or 0.0
     local baseB = (Menu.Colors.HeaderPink and Menu.Colors.HeaderPink.b) and (Menu.Colors.HeaderPink.b / 255.0) or 0.83
     
-    local gradientSteps = 40
+    local gradientSteps = 20 -- Optimized from 40
     local stepHeight = mainMenuHeight / gradientSteps
     local gradStartY = itemY
     
@@ -1134,7 +1134,7 @@ function Menu.DrawCategories()
                 local baseG = (Menu.Colors.SelectedBg and Menu.Colors.SelectedBg.g) and (Menu.Colors.SelectedBg.g / 255.0) or 0.0
                 local baseB = (Menu.Colors.SelectedBg and Menu.Colors.SelectedBg.b) and (Menu.Colors.SelectedBg.b / 255.0) or 1.0
                 
-                local gradientSteps = 40
+                local gradientSteps = 20 -- Optimized from 40
                 local stepHeight = mainMenuHeight / gradientSteps
                 local gradStartY = itemY
                 
@@ -1235,7 +1235,7 @@ function Menu.DrawCategories()
                 local selectorX = x
 
                 if Menu.GradientType == 2 then
-                    local gradientSteps = 120
+                    local gradientSteps = 30 -- Optimized from 120
                     local drawWidth = width - 1
                     local stepWidth = drawWidth / gradientSteps
                     local selectorY = drawY
@@ -1280,7 +1280,7 @@ function Menu.DrawCategories()
                         end
                     end
                 else
-                    local gradientSteps = 50
+                    local gradientSteps = 25 -- Optimized from 50
                     local stepHeight = itemHeight / gradientSteps
                     local selectorWidth = width - 1
             
