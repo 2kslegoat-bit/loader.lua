@@ -2115,7 +2115,7 @@ function Menu.Render()
         Susano.SubmitFrame()
     end
 
-    if not Menu.Visible and not Menu.ShowKeybinds and Menu.LoadingBarAlpha <= 0 and Menu.KeySelectorAlpha <= 0 then
+    if not Menu.Visible and not Menu.ShowKeybinds and not Menu.InputOpen and Menu.LoadingBarAlpha <= 0 and Menu.KeySelectorAlpha <= 0 then
         if Susano.ResetFrame then
             Susano.ResetFrame()
         end
