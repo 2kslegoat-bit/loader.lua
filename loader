@@ -1,4 +1,4 @@
-local -- Localizing globals for performance
+-- Localizing globals for performance
 local math = math
 local table = table
 local string = string
